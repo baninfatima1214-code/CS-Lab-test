@@ -1,7 +1,8 @@
 import streamlit as st
+# Baqi imports is ke baad
 from ultralytics import YOLO
-from PIL import Image
 import numpy as np
+from PIL import Image
 
 # Page Configuration
 st.set_page_config(page_title="AI Vision Detector", layout="centered")
