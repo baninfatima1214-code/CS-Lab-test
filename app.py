@@ -1,83 +1,53 @@
 import streamlit as st
-# Baqi imports is ke baad
-from ultralytics import YOLO
-import numpy as np
+import os
+
+# 1. Force install/import logic
+try:
+    from ultralytics import YOLO
+except ImportError:
+    st.error("Ultralytics library missing. Please check requirements.txt")
+
 from PIL import Image
+import numpy as np
 
-# Page Configuration
-st.set_page_config(page_title="AI Vision Detector", layout="centered")
+# Page config
+st.set_page_config(page_title="AI Detector", layout="wide")
 
-# Custom Styling for User Friendly UI
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f9f9f9;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 3em;
-        background-color: #007bff;
-        color: white;
-        font-weight: bold;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+st.title("🚀 AI Object Detector (Offline Model)")
 
-# Application Title
-st.title("🔍 Smart Object Detector")
-st.write("Apni image upload karein aur AI usay analyze kar k objects bataye ga.")
-
-# Load Pre-trained Model (No API needed)
-# Ye line automatically model download kar legi jab pehli bar chale gi
+# 2. Cache the model so it doesn't reload every time
 @st.cache_resource
-def load_model():
-    return YOLO('yolo11n.pt')  # 'n' stands for nano (fast and lightweight)
+def load_my_model():
+    # This will download the tiny 6MB model to the server
+    return YOLO('yolov8n.pt') 
 
-model = load_model()
+try:
+    model = load_my_model()
+    st.success("AI Model Loaded Successfully!")
+except Exception as e:
+    st.error(f"Model loading error: {e}")
 
-# File Uploader
-uploaded_file = st.file_uploader("Image select karein...", type=["jpg", "jpeg", "png"])
+# 3. Simple UI
+uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "png", "jpeg"])
 
-if uploaded_file is not None:
-    # Display Uploaded Image
+if uploaded_file:
     image = Image.open(uploaded_file)
+    st.image(image, caption="Uploaded Image", width=400)
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.info("Original Image")
-        st.image(image, use_container_width=True)
-
-    # Perform Detection
-    if st.button('Analyze Image'):
-        with st.spinner('AI analysis kar raha hai...'):
-            # Convert image to numpy array for YOLO
+    if st.button("Analyze Now"):
+        with st.spinner("Processing..."):
+            # Convert PIL to OpenCV format
             img_array = np.array(image)
             
-            # Predict
+            # Run Detection
             results = model(img_array)
             
-            # Plot results (bounding boxes etc.)
+            # Show results
             res_plotted = results[0].plot()
+            st.image(res_plotted, caption="AI Result", use_container_width=True)
             
-            with col2:
-                st.success("AI Result")
-                st.image(res_plotted, caption='Detected Objects', use_container_width=True)
-                
-            # Show summary of detected objects
-            st.write("### Detection Summary:")
-            if len(results[0].boxes) > 0:
-                for box in results[0].boxes:
-                    class_id = int(box.cls[0])
-                    label = model.names[class_id]
-                    conf = round(float(box.conf[0]) * 100, 1)
-                    st.write(f"- ✅ **{label.capitalize()}** (Confidence: {conf}%)")
-            else:
-                st.write("Koi object detect nahi hua.")
-
-else:
-    st.warning("Baraye meharbani koi image upload karein.")
-
-st.sidebar.title("About")
-st.sidebar.info("Ye app Computer Vision (YOLO) use karti hai. Is mein koi external API use nahi ho rahi, sab kuch model file ke zariye ho raha hai.")
+            # List found objects
+            st.write("### Objects Found:")
+            for box in results[0].boxes:
+                label = model.names[int(box.cls[0])]
+                st.write(f"- {label}")
